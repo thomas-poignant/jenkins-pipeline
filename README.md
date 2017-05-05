@@ -1,2 +1,2 @@
 # jenkins-pipeline
-Some example of jenkins pipeline i user
+Some example of jenkins pipeline i use
