@@ -1,0 +1,110 @@
+#!groovy
+pipeline
+{
+    /** 
+    * agent : name of my jenkins slave
+    */
+    agent { label 'my_jenkins_slace'}
+
+    environment
+    {
+        //proxy configuration (we have a proxy in my company)
+        def proxyOut = "http://myproxy.com:8080"
+        def HTTP_PROXY="${proxyOut}"
+        def HTTPS_PROXY="${proxyOut}"
+        def http_proxy="${proxyOut}"
+        def https_proxy="${proxyOut}"
+        def no_proxy=".mycompany.com" 
+
+        def releaseBranchName="master"
+
+        //reference to jenkins configuration files
+        def mavenSettingsConfig = '*****'
+        def globalMavenSettingsConfig = "****"
+        def mavenLocalRepo = "/tmp/.mvn"
+    }
+
+    /**
+    * options : https://jenkins.io/doc/book/pipeline/syntax/#options
+    */
+    options
+    {
+        // Number of build to keep
+        buildDiscarder(logRotator(numToKeepStr:'15'))
+        // We can not build at the same time the same branch
+        disableConcurrentBuilds()
+        //timeout of the build
+        timeout(time: 2, unit: 'HOURS')
+        //we want to see timestamps in jenkins builds
+        timestamps()
+    }
+
+    tools 
+    { 
+        //maven version
+        maven 'Maven 3.3.9' 
+        //jdk version 
+        jdk 'jdk8u131' 
+    }
+
+    stages
+    {
+        //Build the version
+        stage('Build')
+        {
+            steps
+            {
+                withMaven(  mavenSettingsConfig: mavenSettingsConfig, 
+                            globalMavenSettingsConfig: globalMavenSettingsConfig,
+                            mavenLocalRepo: mavenLocalRepo, 
+                            options: [
+                                junitPublisher ( ignoreAttachments: true ),
+                                openTasksPublisher ( disabled: true )
+                            ])
+                {
+                    sh "mvn clean install"
+                }
+            }
+        }
+
+        stage ('SonarQube scan')
+        {
+            when 
+            {
+                //we run sonar only on develop branch
+                branch 'develop'
+            }
+            steps 
+            {
+                withMaven(mavenSettingsConfig: mavenSettingsConfig, globalMavenSettingsConfig: globalMavenSettingsConfig,mavenLocalRepo: mavenLocalRepo)
+                {
+                    sh "mvn sonar:sonar -P sonar"
+                }
+            }
+        }
+    }
+
+    post 
+    {
+        changed
+        {
+            echo "Status has changed"
+        }
+        failure
+        {
+            echo "Status is failure"
+        }
+        success
+        {
+            echo "Status is success"
+        }
+        unstable
+        {
+            echo "Status is unstable"
+        }
+        aborted
+        {
+            echo "Status is aborted"
+        }
+    }
+}
