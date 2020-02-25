@@ -4,7 +4,7 @@ pipeline
     /** 
     * agent : name of my jenkins slave
     */
-    agent { label 'my_jenkins_slace'}
+    agent { label 'my_jenkins_slave'}
 
     environment
     {
